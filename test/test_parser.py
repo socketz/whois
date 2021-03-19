@@ -62,7 +62,7 @@ class TestParser(unittest.TestCase):
         for path in glob(whois_path):
             # Parse whois data
             domain = os.path.basename(path)
-            with open(path) as whois_fp:
+            with open(path, encoding='utf-8') as whois_fp:
                 data = whois_fp.read()
 
             w = WhoisEntry.load(domain, data)
@@ -110,8 +110,7 @@ class TestParser(unittest.TestCase):
                     fail += 1
 
         if fail:
-            self.fail("%d/%d sample whois attributes were not parsed properly!"
-                      % (fail, total))
+            self.fail(f"{fail}/{total} sample whois attributes were not parsed properly!")
 
     def test_ca_parse(self):
         data = """
@@ -451,7 +450,7 @@ Hostname:             p.nic.dk
     def test_sk_parse(self):
         data = """
         # whois.sk-nic.sk
-        
+
         Domain:                       pipoline.sk
         Registrant:                   H410977
         Admin Contact:                H410977
@@ -463,7 +462,7 @@ Hostname:             p.nic.dk
         Nameserver:                   ns1.cloudlikeaboss.com
         Nameserver:                   ns2.cloudlikeaboss.com
         EPP Status:                   ok
-        
+
         Registrar:                    PIPO-0002
         Name:                         Pipoline s.r.o.
         Organization:                 Pipoline s.r.o.
@@ -476,7 +475,7 @@ Hostname:             p.nic.dk
         Country Code:                 SK
         Created:                      2017-09-01
         Updated:                      2020-07-02
-        
+
         Contact:                      H410977
         Name:                         Ing. Peter Gonda
         Organization:                 Pipoline s.r.o

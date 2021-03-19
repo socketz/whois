@@ -39,6 +39,7 @@ KNOWN_FORMATS = [
     '%Y.%m.%d',                 # 2000.01.02
     '%Y/%m/%d',                 # 2000/01/02
     '%Y%m%d',                   # 20170209
+    '%Y%m%d %H:%M:%S',          # 20170209 09:28:24
     '%d/%m/%Y',                 # 02/01/2013
     '%Y. %m. %d.',              # 2000. 01. 02.
     '%Y.%m.%d %H:%M:%S',        # 2014.03.08 10:28:24
@@ -2683,12 +2684,12 @@ class WhoisIR(WhoisEntry):
     """Whois parser for .ir domains."""
 
     regex = {
-        'domain_name': 'domain: *(.+)',
-        'registrant_name': 'person: *(.+)',
-        'registrant_organization': 'org: *(.+)',
-        'updated_date': 'last-updated: *(.+)',
-        'expiration_date': 'expire-date: *(.+)',
-        'name_servers': 'nserver: *(.+)',  # list of name servers
+        'domain_name': r'domain: *(.+)',
+        'registrant_name': r'person: *(.+)',
+        'registrant_organization': r'org: *(.+)',
+        'updated_date': r'last-updated: *(.+)',
+        'expiration_date': r'expire-date: *(.+)',
+        'name_servers': r'nserver: *(.+)',  # list of name servers
         'emails': EMAIL_REGEX,
     }
 
@@ -2707,8 +2708,8 @@ class WhoisZhongGuo(WhoisEntry):
         'creation_date': r'Registration Time: *(.+)',
         'registrant_name': 'Registrant: *(.+)',
         'registrar': r'Sponsoring Registrar: *(.+)',
-        'expiration_date': 'Expiration Time: *(.+)',
-        'name_servers': 'Name Server: *(.+)',  # list of name servers
+        'expiration_date': r'Expiration Time: *(.+)',
+        'name_servers': r'Name Server: *(.+)',  # list of name servers
         'emails': EMAIL_REGEX,
     }
 
