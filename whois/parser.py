@@ -59,7 +59,13 @@ KNOWN_FORMATS = [
 
 
 class PywhoisError(Exception):
-    pass
+    def __init__(self, value, message="Whois exception"):
+        self.value = value
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f'{self.message}: {self.value}'
 
 
 def datetime_parse(s):
@@ -361,39 +367,20 @@ class WhoisCl(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No match for "' in text:
+        try:
+            if 'No match for "' not in text and 'No match for domain "' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
         else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
+            nsmatch = re.compile('Name Servers:(.*?)DNSSEC:', re.DOTALL).search(text)
+            if nsmatch:
+                self['name_servers'] = [line.strip() for line in nsmatch.groups()[0].strip().splitlines()]
 
-
-class WhoisSG(WhoisEntry):
-    """Whois parser for .sg domains."""
-
-    regex = {
-        'domain_name':      r'Domain name: *(.+)',
-        'registrant_name':  r'Registrant:\n\s+Name:(.+)',
-        'registrar':        r'Registrar: *(.+)',
-        'creation_date':    r'Creation date: *(.+)',
-        'expiration_date':  r'Expiration date: *(.+)',
-        'dnssec':           r'DNSSEC:\n(.*)',
-    }
-
-    def __init__(self, domain, text):
-
-        if 'Domain Not Found' in text:
-            raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
-
-        nsmatch = re.compile('Name Servers:(.*?)DNSSEC:', re.DOTALL).search(text)
-        if nsmatch:
-            self['name_servers'] = [line.strip() for line in nsmatch.groups()[0].strip().splitlines()]
-
-        techmatch = re.compile('Technical Contact:(.*?)Name Servers:', re.DOTALL).search(text)
-        if techmatch:
-            for line in techmatch.groups()[0].strip().splitlines():
-                self['technical_conatact_'+ line.split(':')[0].strip().lower()] = line.split(':')[1].strip()
+            techmatch = re.compile('Technical Contact:(.*?)Name Servers:', re.DOTALL).search(text)
+            if techmatch:
+                for line in techmatch.groups()[0].strip().splitlines():
+                    self['technical_conatact_'+ line.split(':')[0].strip().lower()] = line.split(':')[1].strip()
 
 
 class WhoisPe(WhoisEntry):
@@ -412,21 +399,22 @@ class WhoisPe(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No match for "' in text:
+        try:
+            if 'No match for "' not in text and 'No match for domain "' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
-
 
 class WhoisSpace(WhoisEntry):
     """Whois parser for .space domains
     """
 
     def __init__(self, domain, text):
-        if 'No match for "' in text:
+        try:
+            if 'No match for "' not in text and 'No match for domain "' not in text:
+                WhoisEntry.__init__(self, domain, text)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text)
 
 
 class WhoisCom(WhoisEntry):
@@ -434,10 +422,11 @@ class WhoisCom(WhoisEntry):
     """
 
     def __init__(self, domain, text):
-        if 'No match for "' in text:
+        try:
+            if 'No match for "' not in text and 'No match for domain "' not in text:
+                WhoisEntry.__init__(self, domain, text)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text)
 
 
 class WhoisNet(WhoisEntry):
@@ -445,10 +434,11 @@ class WhoisNet(WhoisEntry):
     """
 
     def __init__(self, domain, text):
-        if 'No match for "' in text:
+        try:
+            if 'No match for "' not in text and 'No match for domain "' not in text:
+                WhoisEntry.__init__(self, domain, text)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text)
 
 
 class WhoisOrg(WhoisEntry):
@@ -468,10 +458,11 @@ class WhoisOrg(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if text.strip() == 'NOT FOUND':
+        try:
+            if text.strip() != 'NOT FOUND':
+                WhoisEntry.__init__(self, domain, text)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text)
 
 
 class WhoisRo(WhoisEntry):
@@ -492,10 +483,11 @@ class WhoisRo(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if text.strip() == 'NOT FOUND':
+        try:
+            if text.strip() != 'NOT FOUND':
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisRu(WhoisEntry):
@@ -514,10 +506,11 @@ class WhoisRu(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No entries found' in text:
+        try:
+            if 'No entries found' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisNl(WhoisEntry):
@@ -539,18 +532,20 @@ class WhoisNl(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if text.endswith('is free'):
+        try:
+            if not text.endswith('is free'):
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
         else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
+            match = re.compile('Domain nameservers:(.*?)Record maintained by', re.DOTALL).search(text)
+            if match:
+                duplicate_nameservers_with_ip = [line.strip()
+                                                 for line in match.groups()[0].strip().splitlines()]
+                duplicate_nameservers_without_ip = [nameserver.split(' ')[0]
+                                                    for nameserver in duplicate_nameservers_with_ip]
+                self['name_servers'] = sorted(list(set(duplicate_nameservers_without_ip)))
 
-        match = re.compile(r'Domain nameservers:(.*?)Record maintained by', re.DOTALL).search(text)
-        if match:
-            duplicate_nameservers_with_ip = [line.strip()
-                                             for line in match.groups()[0].strip().splitlines()]
-            duplicate_nameservers_without_ip = [nameserver.split(' ')[0]
-                                                for nameserver in duplicate_nameservers_with_ip]
-            self['name_servers'] = sorted(list(set(duplicate_nameservers_without_ip)))
 
 
 class WhoisName(WhoisEntry):
@@ -574,10 +569,11 @@ class WhoisName(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No match for ' in text:
+        try:
+            if 'No match for ' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisUs(WhoisEntry):
@@ -646,10 +642,11 @@ class WhoisUs(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'Not found:' in text:
+        try:
+            if 'Not found:' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisPl(WhoisEntry):
@@ -668,10 +665,11 @@ class WhoisPl(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No information available about domain name' in text:
+        try:
+            if 'No information available about domain name' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisCa(WhoisEntry):
@@ -696,10 +694,11 @@ class WhoisCa(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'Domain status:         available' in text or 'Not found:' in text:
+        try:
+            if 'Domain status:         available' not in text and 'Not found:' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisMe(WhoisEntry):
@@ -762,10 +761,11 @@ class WhoisMe(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'NOT FOUND' in text:
+        try:
+            if 'NOT FOUND' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisUk(WhoisEntry):
@@ -793,31 +793,33 @@ class WhoisUk(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No match for ' in text:
+        try:
+            if 'No match for ' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisFr(WhoisEntry):
     """Whois parser for .fr domains
     """
     regex = {
-        'domain_name': r'domain: *(.+)',
-        'registrar': r'registrar: *(.+)',
-        'creation_date': r'created: *(.+)',
-        'expiration_date': r'Expir\w+ Date:\s?(.+)',
-        'name_servers': r'nserver: *(.+)',  # list of name servers
-        'status': r'status: *(.+)',  # list of statuses
-        'emails': EMAIL_REGEX,  # list of email addresses
-        'updated_date': r'last-update: *(.+)',
+        'domain_name':      r'domain: *(.+)',
+        'registrar':        r'registrar: *(.+)',
+        'creation_date':    r'created: *(.+)',
+        'expiration_date':  r'Expir\w+ Date:\s?(.+)',
+        'name_servers':     r'nserver: *(.+)',  # list of name servers
+        'status':           r'status: *(.+)',  # list of statuses
+        'emails':           EMAIL_REGEX,  # list of email addresses
+        'updated_date':     r'last-update: *(.+)',
     }
 
     def __init__(self, domain, text):
-        if 'No entries found' in text:
+        try:
+            if 'No entries found' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisFi(WhoisEntry):
@@ -844,10 +846,11 @@ class WhoisFi(WhoisEntry):
     dayfirst = True
 
     def __init__(self, domain, text):
-        if 'Domain not ' in text:
+        try:
+            if 'Domain not ' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisJp(WhoisEntry):
@@ -864,62 +867,65 @@ class WhoisJp(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No match!!' in text:
+        try:
+            if 'No match!!' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisAU(WhoisEntry):
     """Whois parser for .au domains
     """
     regex = {
-        'domain_name':                    r'Domain Name: *(.+)\n',
-        'updated_date':                  r'Last Modified: *(.+)\n',
-        'registrar':                      r'Registrar Name: *(.+)\n',
-        'status':                         r'Status: *(.+)',
-        'registrant_name':                r'Registrant: *(.+)',
-        'registrant_contact_name':        r'Registrant Contact Name: (.+)',
-        'name_servers':                   r'Name Server: *(.+)',
+        'domain_name':                  r'Domain Name: *(.+)\n',
+        'updated_date':                 r'Last Modified: *(.+)\n',
+        'registrar':                    r'Registrar Name: *(.+)\n',
+        'status':                       r'Status: *(.+)',
+        'registrant_name':              r'Registrant: *(.+)',
+        'registrant_contact_name':      r'Registrant Contact Name: (.+)',
+        'name_servers':                 r'Name Server: *(.+)',
     }
 
     def __init__(self, domain, text):
-        if text.strip() == 'No Data Found':
+        try:
+            if not text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisEu(WhoisEntry):
     """Whois parser for .eu domains
     """
     regex = {
-        'domain_name': r'Domain: *([^\n\r]+)',
-        'tech_name': r'Technical: *Name: *([^\n\r]+)',
-        'tech_org': r'Technical: *Name: *[^\n\r]+\s*Organisation: *([^\n\r]+)',
-        'tech_phone': r'Technical: *Name: *[^\n\r]+\s*Organisation: *[^\n\r]+\s*Language: *[^\n\r]+\s*Phone: *([^\n\r]+)',
-        'tech_fax': r'Technical: *Name: *[^\n\r]+\s*Organisation: *[^\n\r]+\s*Language: *[^\n\r]+\s*Phone: *[^\n\r]+\s*Fax: *([^\n\r]+)',
-        'tech_email': r'Technical: *Name: *[^\n\r]+\s*Organisation: *[^\n\r]+\s*Language: *[^\n\r]+\s*Phone: *[^\n\r]+\s*Fax: *[^\n\r]+\s*Email: *([^\n\r]+)',
-        'registrar': r'Registrar: *Name: *([^\n\r]+)',
-        'name_servers': r'Name servers:\n *([\n\S\s]+)',  # list of name servers
+        'domain_name':      r'Domain: *([^\n\r]+)',
+        'tech_name':        r'Technical: *Name: *([^\n\r]+)',
+        'tech_org':         r'Technical: *Name: *[^\n\r]+\s*Organisation: *([^\n\r]+)',
+        'tech_phone':       r'Technical: *Name: *[^\n\r]+\s*Organisation: *[^\n\r]+\s*Language: *[^\n\r]+\s*Phone: *([^\n\r]+)',
+        'tech_fax':         r'Technical: *Name: *[^\n\r]+\s*Organisation: *[^\n\r]+\s*Language: *[^\n\r]+\s*Phone: *[^\n\r]+\s*Fax: *([^\n\r]+)',
+        'tech_email':       r'Technical: *Name: *[^\n\r]+\s*Organisation: *[^\n\r]+\s*Language: *[^\n\r]+\s*Phone: *[^\n\r]+\s*Fax: *[^\n\r]+\s*Email: *([^\n\r]+)',
+        'registrar':        r'Registrar: *Name: *([^\n\r]+)',
+        'name_servers':     r'Name servers:\n *([\n\S\s]+)',  # list of name servers
     }
 
     def __init__(self, domain, text):
-        if text.strip() == 'Status: AVAILABLE':
+        try:
+            if text.strip() != 'Status: AVAILABLE':
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisEe(WhoisEntry):
     """Whois parser for .ee domains
     """
     regex = {
-        'domain_name': r'Domain: *[\n\r]+\s*name: *([^\n\r]+)',
-        'status': r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *([^\n\r]+)',
-        'creation_date': r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *[^\n\r]+\sregistered: *([^\n\r]+)',
-        'updated_date': r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *[^\n\r]+\sregistered: *[^\n\r]+\schanged: *([^\n\r]+)',
-        'expiration_date': r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *[^\n\r]+\sregistered: *[^\n\r]+\schanged: *[^\n\r]+\sexpire: *([^\n\r]+)',
+        'domain_name':      r'Domain: *[\n\r]+\s*name: *([^\n\r]+)',
+        'status':           r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *([^\n\r]+)',
+        'creation_date':    r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *[^\n\r]+\sregistered: *([^\n\r]+)',
+        'updated_date':     r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *[^\n\r]+\sregistered: *[^\n\r]+\schanged: *([^\n\r]+)',
+        'expiration_date':  r'Domain: *[\n\r]+\s*name: *[^\n\r]+\sstatus: *[^\n\r]+\sregistered: *[^\n\r]+\schanged: *[^\n\r]+\sexpire: *([^\n\r]+)',
 
         # 'tech_name': r'Technical: *Name: *([^\n\r]+)',
         # 'tech_org': r'Technical: *Name: *[^\n\r]+\s*Organisation: *([^\n\r]+)',
@@ -931,17 +937,18 @@ class WhoisEe(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if text.strip() == 'Domain not found':
+        try:
+            if text.strip() != 'Domain not found':
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisBr(WhoisEntry):
     """Whois parser for .br domains
     """
     regex = {
-        'domain_name':                    r'domain: *(.+)\n',
+        'domain_name':                   r'domain: *(.+)\n',
         'registrant_name':               r'owner: *([\S ]+)',
         'registrant_id':                 r'ownerid: *(.+)',
         'country':                       r'country: *(.+)',
@@ -963,11 +970,11 @@ class WhoisBr(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-
-        if 'Not found:' in text:
+        try:
+            if 'Not found:' not in text and 'No match for' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
     def _preprocess(self, attr, value):
         value = value.strip()
@@ -979,78 +986,81 @@ class WhoisBr(WhoisEntry):
                 dayfirst=self.dayfirst,
                 yearfirst=self.yearfirst)
         return value
-        
+
 
 class WhoisKr(WhoisEntry):
     """Whois parser for .kr domains
     """
     regex = {
-        'domain_name': r'Domain Name\s*: *(.+)',
-        'registrant_name': r'Registrant\s*: *(.+)',
-        'registrant_address': r'Registrant Address\s*: *(.+)',
-        'registrant_zip': r'Registrant Zip Code\s*: *(.+)',
-        'admin_name': r'Administrative Contact\(AC\)\s*: *(.+)',
-        'admin_email': r'AC E-Mail\s*: *(.+)',
-        'admin_phone': r'AC Phone Number\s*: *(.+)',
-        'creation_date': r'Registered Date\s*: *(.+)',
-        'updated_date':  r'Last updated Date\s*: *(.+)',
-        'expiration_date':  r'Expiration Date\s*: *(.+)',
-        'registrar':  r'Authorized Agency\s*: *(.+)',
-        'name_servers': r'Host Name\s*: *(.+)',  # list of name servers
+        'domain_name':          r'Domain Name\s*: *(.+)',
+        'registrant_name':      r'Registrant\s*: *(.+)',
+        'registrant_address':   r'Registrant Address\s*: *(.+)',
+        'registrant_zip':       r'Registrant Zip Code\s*: *(.+)',
+        'admin_name':           r'Administrative Contact\(AC\)\s*: *(.+)',
+        'admin_email':          r'AC E-Mail\s*: *(.+)',
+        'admin_phone':          r'AC Phone Number\s*: *(.+)',
+        'creation_date':        r'Registered Date\s*: *(.+)',
+        'updated_date':         r'Last updated Date\s*: *(.+)',
+        'expiration_date':      r'Expiration Date\s*: *(.+)',
+        'registrar':            r'Authorized Agency\s*: *(.+)',
+        'name_servers':         r'Host Name\s*: *(.+)',  # list of name servers
     }
 
     def __init__(self, domain, text):
-        if text.endswith(' no match'):
+        try:
+            if not text.endswith(' no match') and 'not found' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisPt(WhoisEntry):
     """Whois parser for .pt domains
     """
     regex = {
-        'domain_name': r'Domain: *(.+)',
-        'creation_date': r'Creation Date: *(.+)',
-        'expiration_date': r'Expiration Date: *(.+)',
-        'registrant_name': r'Owner Name: *(.+)',
-        'registrant_street': r'Owner Address: *(.+)',
-        'registrant_city': r'Owner Locality: *(.+)',
-        'registrant_postal_code': r'Owner ZipCode: *(.+)',
-        'registrant_email': r'Owner Email: *(.+)',
-        'admin': r'Admin Name: *(.+)',
-        'admin_street': r'Admin Address: *(.+)',
-        'admin_city': r'Admin Locality: *(.+)',
-        'admin_postal_code': r'Admin ZipCode: *(.+)',
-        'admin_email': r'Admin Email: *(.+)',
-        'name_servers': r'Name Server: *(.+) \|',  # list of name servers
-        'status': r'Domain Status: *(.+)',  # list of statuses
-        'emails': EMAIL_REGEX,  # list of email addresses
+        'domain_name':              r'Domain: *(.+)',
+        'creation_date':            r'Creation Date: *(.+)',
+        'expiration_date':          r'Expiration Date: *(.+)',
+        'registrant_name':          r'Owner Name: *(.+)',
+        'registrant_street':        r'Owner Address: *(.+)',
+        'registrant_city':          r'Owner Locality: *(.+)',
+        'registrant_postal_code':   r'Owner ZipCode: *(.+)',
+        'registrant_email':         r'Owner Email: *(.+)',
+        'admin':                    r'Admin Name: *(.+)',
+        'admin_street':             r'Admin Address: *(.+)',
+        'admin_city':               r'Admin Locality: *(.+)',
+        'admin_postal_code':        r'Admin ZipCode: *(.+)',
+        'admin_email':              r'Admin Email: *(.+)',
+        'name_servers':             r'Name Server: *(.+) \|',  # list of name servers
+        'status':                   r'Domain Status: *(.+)',  # list of statuses
+        'emails':                   EMAIL_REGEX,  # list of email addresses
     }
     dayfirst = True
 
     def __init__(self, domain, text):
-        if text.strip() == 'No entries found':
+        try:
+            if text.strip() != 'No entries found' and 'No Match' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisBg(WhoisEntry):
     """Whois parser for .bg domains
     """
     regex = {
-        'domain_name': r'DOMAIN NAME: *(.+)\n',
-        'status': r'registration status: s*(.+)',
-        'expiration_date': r'expires at: *(.+)',
+        'domain_name':      r'DOMAIN NAME: *(.+)\n',
+        'status':           r'registration status: s*(.+)',
+        'expiration_date':  r'expires at: *(.+)',
     }
     dayfirst = True
 
     def __init__(self, domain, text):
-        if 'does not exist in database!' in text:
+        try:
+            if 'does not exist in database!' not in text and 'registration status: available' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisDe(WhoisEntry):
@@ -1069,58 +1079,61 @@ class WhoisDe(WhoisEntry):
         'phone':            r'Phone: *(.+)',
         'fax':              r'Fax: *(.+)',
         'name_servers':     r'Nserver: *(.+)',  # list of name servers
-        'emails': EMAIL_REGEX  # list of email addresses
+        'emails':           EMAIL_REGEX  # list of email addresses
 
     }
 
     def __init__(self, domain, text):
-        if 'Status: free' in text:
+        try:
+            if 'Status: free' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisAt(WhoisEntry):
     """Whois parser for .at domains
     """
     regex = {
-        'domain_name': r'domain: *(.+)',
-        'registrar': r'registrar: *(.+)',
-        'name': r'personname: *(.+)',
-        'org': r'organization: *(.+)',
-        'address': r'street address: *(.+)',
-        'zipcode': r'postal code: *(.+)',
-        'city': r'city: *(.+)',
-        'country': r'country: *(.+)',
-        'phone': r'phone: *(.+)',
-        'fax': r'fax-no: *(.+)',
-        'updated_date': r'changed: *(.+)',
-        'email': r'e-mail: *(.+)',
+        'domain_name':    r'domain: *(.+)',
+        'registrar':      r'registrar: *(.+)',
+        'name':           r'personname: *(.+)',
+        'org':            r'organization: *(.+)',
+        'address':        r'street address: *(.+)',
+        'zipcode':        r'postal code: *(.+)',
+        'city':           r'city: *(.+)',
+        'country':        r'country: *(.+)',
+        'phone':          r'phone: *(.+)',
+        'fax':            r'fax-no: *(.+)',
+        'updated_date':   r'changed: *(.+)',
+        'email':          r'e-mail: *(.+)',
     }
 
     def __init__(self, domain, text):
-        if 'Status: free' in text:
+        try:
+            if 'nothing found' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisBe(WhoisEntry):
     """Whois parser for .be domains
     """
     regex = {
-        'name': r'Name: *(.+)',
-        'org': r'Organisation: *(.+)',
-        'phone': r'Phone: *(.+)',
-        'fax': r'Fax: *(.+)',
-        'email': r'Email: *(.+)',
+        'name':     r'Name: *(.+)',
+        'org':      r'Organisation: *(.+)',
+        'phone':    r'Phone: *(.+)',
+        'fax':      r'Fax: *(.+)',
+        'email':    r'Email: *(.+)',
     }
 
     def __init__(self, domain, text):
-        if 'Status: AVAILABLE' in text:
+        try:
+            if 'Status: AVAILABLE' in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisInfo(WhoisEntry):
@@ -1147,14 +1160,15 @@ class WhoisInfo(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if text.strip() == 'NOT FOUND':
+        try:
+            if 'NOT FOUND' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisRf(WhoisRu):
-    """Whois parser for .su domains
+    """Whois parser for .рф domains
     """
 
     def __init__(self, domain, text):
@@ -1242,10 +1256,11 @@ class WhoisClub(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'Not found:' in text:
+        try:
+            if 'Not found:' not in text and 'No Data Found' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisIo(WhoisEntry):
@@ -1268,10 +1283,11 @@ class WhoisIo(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'is available for purchase' in text:
+        try:
+            if 'is available for purchase' not in text and 'NOT FOUND' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisBiz(WhoisEntry):
@@ -1323,10 +1339,11 @@ class WhoisBiz(WhoisEntry):
     }
 
     def __init__(self, domain, text):
-        if 'No Data Found' in text:
+        try:
+            if 'No Data Found' not in text:
+                WhoisEntry.__init__(self, domain, text, self.regex)
+        except Exception:
             raise PywhoisError(text)
-        else:
-            WhoisEntry.__init__(self, domain, text, self.regex)
 
 
 class WhoisMobi(WhoisMe):
@@ -2660,8 +2677,8 @@ class WhoisKZ(WhoisEntry):
             raise PywhoisError(text)
         else:
             WhoisEntry.__init__(self, domain, text, self.regex)
-            
-            
+
+
 class WhoisIR(WhoisEntry):
     """Whois parser for .ir domains."""
 

@@ -90,7 +90,6 @@ class NICClient(object):
     IST_HOST = "whois.afilias-srs.net"
     CHAT_HOST = "whois.nic.chat"
     WEBSITE_HOST = "whois.nic.website"
-    
 
     WHOIS_RECURSE = 0x01
     WHOIS_QUICK = 0x02
@@ -105,7 +104,8 @@ class NICClient(object):
         whois server for getting contact details.
         """
         nhost = None
-        match = re.compile(r'Domain Name: {}\s*.*?Whois Server: (.*?)\s'.format(query), flags=re.IGNORECASE | re.DOTALL).search(buf)
+        match = re.compile(r'Domain Name: {}\s*.*?Whois Server: (.*?)\s'.format(
+            query), flags=re.IGNORECASE | re.DOTALL).search(buf)
         if match:
             nhost = match.groups()[0]
             # if the whois address is domain.tld/something then
@@ -141,13 +141,14 @@ class NICClient(object):
             socksproxy, port = proxy.split(":")
             socks_proto = socket.AF_INET
             if socket.AF_INET6 in [sock[0] for sock in socket.getaddrinfo(socksproxy, port)]:
-                socks_proto=socket.AF_INET6
+                socks_proto = socket.AF_INET6
             s = socks.socksocket(socks_proto)
-            s.set_proxy(socks.SOCKS5, socksproxy, int(port), True, socks_user, socks_password)
+            s.set_proxy(socks.SOCKS5, socksproxy, int(
+                port), True, socks_user, socks_password)
         else:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(10)
-        try: # socket.connect in a try, in order to allow things like looping whois on different domains without stopping on timeouts: https://stackoverflow.com/questions/25447803/python-socket-connection-exception
+        try:  # socket.connect in a try, in order to allow things like looping whois on different domains without stopping on timeouts: https://stackoverflow.com/questions/25447803/python-socket-connection-exception
             s.connect((hostname, 43))
             try:
                 query = query.decode('utf-8')
@@ -181,10 +182,11 @@ class NICClient(object):
                 nhost = self.findwhois_server(response, hostname, query)
             if nhost is not None:
                 response += self.whois(query, nhost, 0)
-        except socket.error as exc: # 'response' is assigned a value (also a str) even on socket timeout
-            print("Error trying to connect to socket: closing socket") 
+        # 'response' is assigned a value (also a str) even on socket timeout
+        except socket.error as exc:
+            print("Error trying to connect to socket: closing socket")
             s.close()
-            response = "Socket not responding"   
+            response = "Socket not responding"
         return response
 
     def choose_server(self, domain):
